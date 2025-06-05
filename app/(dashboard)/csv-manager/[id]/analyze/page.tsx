@@ -399,25 +399,24 @@ export default function AnalyzePage() {
                                 ) : rowsError ? (
                                     <p className="text-destructive text-center">{rowsError}</p>
                                 ) : selectedColumn && chartData.length > 0 ? (
-                                    <div className="relative w-full flex-grow h-96"> {/* Added relative, flex-grow, and set height */}
+                                    <div className="relative w-full flex-grow h-96">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            {selectedChartType === 'Bar Chart' && (
+                                            {selectedChartType === 'Bar Chart' ? (
                                                 <BarChart data={chartData} margin={{
                                                     top: 5,
                                                     right: 30,
                                                     left: 20,
-                                                    bottom: 80, // Adjusted bottom margin for labels and legend
+                                                    bottom: 80,
                                                 }}>
                                                     <CartesianGrid strokeDasharray="3 3" />
                                                     <XAxis
                                                         dataKey={summaryStatistics?.[selectedColumn]?.dataType === 'number' ? 'range' : 'name'}
                                                         angle={-45}
                                                         textAnchor="end"
-                                                        height={80} // Adjusted height to accommodate truncated labels
-                                                        interval={0} // Show all labels initially
+                                                        height={80}
+                                                        interval={0}
                                                         tickFormatter={(value: string) => {
-                                                            // Truncate long labels for readability
-                                                            if (value.length > 15) { // Adjust truncation length as needed
+                                                            if (value.length > 15) {
                                                                 return value.substring(0, 12) + '...';
                                                             }
                                                             return value;
@@ -436,8 +435,7 @@ export default function AnalyzePage() {
                                                         name={summaryStatistics?.[selectedColumn]?.dataType === 'number' ? 'Frequency' : 'Count'}
                                                     />
                                                 </BarChart>
-                                            )}
-                                            {selectedChartType === 'Line Chart' && (
+                                            ) : selectedChartType === 'Line Chart' ? (
                                                 <LineChart data={chartData} margin={{
                                                     top: 5,
                                                     right: 30,
@@ -456,8 +454,7 @@ export default function AnalyzePage() {
                                                         name="Value"
                                                     />
                                                 </LineChart>
-                                            )}
-                                            {selectedChartType === 'Pie Chart' && (
+                                            ) : selectedChartType === 'Pie Chart' ? (
                                                 <PieChart margin={{
                                                     top: 20,
                                                     right: 20,
@@ -485,6 +482,10 @@ export default function AnalyzePage() {
                                                     <Tooltip contentStyle={{ backgroundColor: '#1e293b', color: '#e2e8f0', border: 'none' }} />
                                                     <Legend wrapperStyle={{ fontSize: '12px', color: '#475569' }} />
                                                 </PieChart>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                                    Select a chart type to view visualization
+                                                </div>
                                             )}
                                         </ResponsiveContainer>
                                     </div>
@@ -496,7 +497,7 @@ export default function AnalyzePage() {
                             </CardContent>
                         </Card>
                     </>
-                ) : null /* Handle case where fileId is not available yet */}
+                ) : null}
             </div>
         </div>
     );

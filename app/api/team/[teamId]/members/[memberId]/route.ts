@@ -5,16 +5,15 @@ import { TeamMember } from "@prisma/client";
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { teamId: string; memberId: string } }
+    { params }: { params: Promise<{ teamId: string; memberId: string }> }
 ) {
     try {
+        const { teamId, memberId: memberIdToRemove } = await params;
         const session = await getAuthSession();
         if (!session?.user?.id) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const teamId = params.teamId;
-        const memberIdToRemove = params.memberId; // This is the userId of the member to remove
         const currentUserId = session.user.id; // This is the userId of the user making the request
 
         // Find the team member record for the user making the request to check their role

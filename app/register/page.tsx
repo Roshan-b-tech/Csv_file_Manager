@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -10,10 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-export default function RegisterPage() {
+function RegisterForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const token = searchParams.get('token');
+    const token = searchParams ? searchParams.get('token') : null;
     const { toast } = useToast();
     const [formData, setFormData] = useState({
         name: "",
@@ -91,6 +91,113 @@ export default function RegisterPage() {
     }, [token, formData.email, toast]);
 
     return (
+        <Card className="w-full max-w-xs sm:max-w-md shadow-xl animate-in fade-in zoom-in-95 bg-white/90 backdrop-blur-md border border-white/30 p-4 sm:p-0">
+            <CardHeader className="text-center">
+                <CardTitle className="text-2xl sm:text-3xl font-bold">Create your account</CardTitle>
+                <CardDescription className="text-sm">Sign up to manage your CSV files and profile</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSubmit} autoComplete="off">
+                <CardContent className="space-y-4">
+                    {error && (
+                        <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm animate-in fade-in slide-in-from-top-2">
+                            {error}
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <Label htmlFor="name" className="text-sm">Display Name</Label>
+                        <Input
+                            id="name"
+                            name="name"
+                            type="text"
+                            placeholder="Your name"
+                            autoComplete="off"
+                            required
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            className="h-10 text-base"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm">Email Address</Label>
+                        <Input
+                            id="email"
+                            name="email"
+                            type="email"
+                            placeholder="you@example.com"
+                            autoComplete="off"
+                            required
+                            value={formData.email}
+                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                            className="h-10 text-base"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password" className="text-sm">Password</Label>
+                        <Input
+                            id="password"
+                            name="password"
+                            type="password"
+                            placeholder="Create a password"
+                            autoComplete="new-password"
+                            required
+                            value={formData.password}
+                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            className="h-10 text-base"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bio" className="text-sm">Bio</Label>
+                        <Textarea
+                            id="bio"
+                            name="bio"
+                            placeholder="Tell us about yourself"
+                            value={formData.bio}
+                            onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                            className="text-base"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="location" className="text-sm">Location</Label>
+                        <Input
+                            id="location"
+                            name="location"
+                            type="text"
+                            placeholder="Your location"
+                            value={formData.location}
+                            onChange={e => setFormData({ ...formData, location: e.target.value })}
+                            className="h-10 text-base"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="website" className="text-sm">Website</Label>
+                        <Input
+                            id="website"
+                            name="website"
+                            type="url"
+                            placeholder="Your website"
+                            value={formData.website}
+                            onChange={e => setFormData({ ...formData, website: e.target.value })}
+                            className="h-10 text-base"
+                        />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button type="submit" className="w-full transition-all duration-200 h-10 text-base" disabled={isLoading}>
+                        {isLoading ? "Creating account..." : "Create account"}
+                    </Button>
+                    <div className="text-sm text-center mt-2 animate-in fade-in slide-in-from-bottom-2">
+                        <Link href="/login" className="font-medium text-primary hover:underline transition-colors">
+                            Already have an account? Sign in
+                        </Link>
+                    </div>
+                </CardFooter>
+            </form>
+        </Card>
+    );
+}
+
+export default function RegisterPage() {
+    return (
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-2 sm:p-0">
             {/* Modern gradient background */}
             <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 animate-gradient-move" />
@@ -105,108 +212,9 @@ export default function RegisterPage() {
                 </defs>
             </svg>
             {/* Registration card */}
-            <Card className="w-full max-w-xs sm:max-w-md shadow-xl animate-in fade-in zoom-in-95 bg-white/90 backdrop-blur-md border border-white/30 p-4 sm:p-0">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl sm:text-3xl font-bold">Create your account</CardTitle>
-                    <CardDescription className="text-sm">Sign up to manage your CSV files and profile</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleSubmit} autoComplete="off">
-                    <CardContent className="space-y-4">
-                        {error && (
-                            <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm animate-in fade-in slide-in-from-top-2">
-                                {error}
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label htmlFor="name" className="text-sm">Display Name</Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                type="text"
-                                placeholder="Your name"
-                                autoComplete="off"
-                                required
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                className="h-10 text-base"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm">Email Address</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="you@example.com"
-                                autoComplete="off"
-                                required
-                                value={formData.email}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                className="h-10 text-base"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password" className="text-sm">Password</Label>
-                            <Input
-                                id="password"
-                                name="password"
-                                type="password"
-                                placeholder="Create a password"
-                                autoComplete="new-password"
-                                required
-                                value={formData.password}
-                                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                className="h-10 text-base"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="bio" className="text-sm">Bio</Label>
-                            <Textarea
-                                id="bio"
-                                name="bio"
-                                placeholder="Tell us about yourself"
-                                value={formData.bio}
-                                onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                                className="text-base"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="location" className="text-sm">Location</Label>
-                            <Input
-                                id="location"
-                                name="location"
-                                type="text"
-                                placeholder="Your location"
-                                value={formData.location}
-                                onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                className="h-10 text-base"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="website" className="text-sm">Website</Label>
-                            <Input
-                                id="website"
-                                name="website"
-                                type="url"
-                                placeholder="Your website"
-                                value={formData.website}
-                                onChange={e => setFormData({ ...formData, website: e.target.value })}
-                                className="h-10 text-base"
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col gap-2">
-                        <Button type="submit" className="w-full transition-all duration-200 h-10 text-base" disabled={isLoading}>
-                            {isLoading ? "Creating account..." : "Create account"}
-                        </Button>
-                        <div className="text-sm text-center mt-2 animate-in fade-in slide-in-from-bottom-2">
-                            <Link href="/login" className="font-medium text-primary hover:underline transition-colors">
-                                Already have an account? Sign in
-                            </Link>
-                        </div>
-                    </CardFooter>
-                </form>
-            </Card>
+            <Suspense fallback={<div>Loading...</div>}>
+                <RegisterForm />
+            </Suspense>
         </div>
     );
 } 

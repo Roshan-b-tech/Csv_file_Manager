@@ -11,9 +11,10 @@ type CsvFileWithRelations = CsvFile & {
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.id || !session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -38,7 +39,7 @@ export async function GET(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const fileId = params.id;
+        const fileId = id;
         const userTeamId = user.teams.length > 0 ? user.teams[0].teamId : null;
 
         console.log("[CSV_FILE_GET] Fetching file:", fileId, "for user:", user.id, "teamId:", userTeamId);
@@ -98,9 +99,10 @@ export async function GET(
 
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.id || !session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -133,7 +135,7 @@ export async function PATCH(
             return new NextResponse("Invalid name", { status: 400 });
         }
 
-        const fileId = params.id;
+        const fileId = id;
 
         // Find the CSV file
         const csvFile = await db.csvFile.findUnique({
@@ -172,9 +174,10 @@ export async function PATCH(
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -188,7 +191,7 @@ export async function DELETE(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const fileId = params.id;
+        const fileId = id;
 
         // Verify the CSV file belongs to the user before deleting
         const csvFile = await db.csvFile.findUnique({

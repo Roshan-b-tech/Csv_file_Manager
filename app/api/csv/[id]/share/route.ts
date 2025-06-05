@@ -4,15 +4,16 @@ import { getAuthSession } from "@/lib/auth";
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.id) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const fileId = params.id;
+        const fileId = id;
 
         // Find the user and their team
         const userWithTeam = await db.user.findUnique({

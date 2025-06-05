@@ -86,19 +86,13 @@ export const authOptions: NextAuthOptions = {
             return session;
         },
         async jwt({ token, user }) {
+            if (!token.email) {
+                return token;
+            }
+
             const dbUser = await db.user.findFirst({
                 where: {
-                    email: token.email as string,
-                },
-                include: {
-                    teams: {
-                        include: {
-                            team: true,
-                        },
-                        where: {
-                            role: "owner",
-                        },
-                    },
+                    email: token.email,
                 },
             });
 
@@ -113,7 +107,6 @@ export const authOptions: NextAuthOptions = {
                 id: dbUser.id,
                 name: dbUser.name,
                 email: dbUser.email,
-                teamName: dbUser.teams?.[0]?.team?.name || null,
             };
         }
     }

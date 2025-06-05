@@ -10,9 +10,10 @@ type CsvRowData = {
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.id || !session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -37,7 +38,7 @@ export async function GET(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const fileId = params.id;
+        const fileId = id;
         const userTeamId = user.teams.length > 0 ? user.teams[0].teamId : null;
 
         const { searchParams } = new URL(req.url);
@@ -140,9 +141,10 @@ export async function GET(
 
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const session = await getAuthSession();
         if (!session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -162,7 +164,7 @@ export async function PATCH(
         // Verify the CSV file belongs to the user
         const csvFile = await db.csvFile.findUnique({
             where: {
-                id: params.id,
+                id: id,
                 userId: user.id,
             },
         });
@@ -175,7 +177,7 @@ export async function PATCH(
         const updatedRow = await db.csvRow.update({
             where: {
                 id: rowId,
-                csvFileId: params.id,
+                csvFileId: id,
             },
             data: {
                 [column]: value,

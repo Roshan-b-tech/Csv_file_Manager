@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function GET(req: NextRequest) {
     try {
@@ -8,12 +9,12 @@ export async function GET(req: NextRequest) {
 
         // Try to create a test user if it doesn't exist
         const testUser = await db.user.upsert({
-            where: { clerkId: userId },
+            where: { email: "test@example.com" },
             update: {},
             create: {
-                clerkId: userId,
-                email: "test@example.com", // This will be updated by Clerk
-                name: "Test User"
+                email: "test@example.com",
+                name: "Test User",
+                password: await bcrypt.hash("testpassword", 10)
             }
         });
 

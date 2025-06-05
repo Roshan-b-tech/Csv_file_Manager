@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
         }
 
         // If an invitation token is provided, validate it
-        let teamId = null;
+        let teamId: string | null = null;
         if (invitationToken) {
             const invitation = await db.invitation.findUnique({
                 where: {
