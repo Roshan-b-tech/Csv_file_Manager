@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                         String         @id @default(cuid())
+  name                       String?
+  email                      String         @unique
+  password                   String
+  image                      String?
+  bio                        String?
+  location                   String?
+  website                    String?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  csvFiles                   CsvFile[]
+  accounts                   Account[]
+  sessions                   Session[]
+  userActivities             UserActivity[]
+  receiveCsvImportNotifications Boolean       @default(true)
+  receiveProductUpdates      Boolean       @default(true)
+  teams                      TeamMember[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CsvFile {
+  id        String     @id @default(cuid())
+  name      String
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  columns   CsvColumn[]
+  rows      CsvRow[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  userActivities UserActivity[]
+  teamId    String?
+  team      Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+}
+
+model CsvColumn {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  csvFileId String
+  csvFile   CsvFile  @relation(fields: [csvFileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CsvRow {
+  id        String   @id @default(cuid())
+  data      Json
+  rowIndex  Int
+  csvFileId String
+  csvFile   CsvFile  @relation(fields: [csvFileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rowIndex])
+}
+
+model UserActivity {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String    @db.VarChar(255)
+  details     Json?
+  csvFileId   String?
+  csvFile     CsvFile?  @relation(fields: [csvFileId], references: [id], onDelete: SetNull) // Use SetNull so activity is not deleted if file is deleted
+  createdAt   DateTime  @default(now())
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Team {
+  id          String        @id @default(cuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  members     TeamMember[]
+  invitations Invitation[]
+  csvFiles    CsvFile[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  role      String   @default("member")
+  userId    String
+  teamId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, teamId])
+}
