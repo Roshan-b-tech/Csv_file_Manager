@@ -11,14 +11,14 @@ export async function GET() {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // Find the user and include their team membership and the team details
-        const userWithTeam = await db.user.findUnique({
+        // Find the user and include all their team memberships and the team details
+        const userWithTeams = await db.user.findUnique({
             where: { id: session.user.id },
             include: {
                 teams: {
                     include: {
                         team: {
-                            include: { // Include members of the team
+                            include: { // Include members of each team
                                 members: {
                                     include: { // Include user details for each member
                                         user: {
@@ -34,43 +34,34 @@ export async function GET() {
                             }
                         },
                     },
-                    // Assuming a user is primarily associated with one team for this view,
-                    // we might filter or take the first one. For simplicity, we'll assume
-                    // the first team member entry includes the relevant team.
-                    take: 1,
+                    // Do not use take: 1 here to get all teams the user is a member of
                 },
             },
         });
 
-        if (!userWithTeam || userWithTeam.teams.length === 0) {
-            // User is not part of a team
-            return NextResponse.json(null, { status: 200 });
+        if (!userWithTeams || userWithTeams.teams.length === 0) {
+            // User is not part of any team
+            return NextResponse.json([], { status: 200 }); // Return an empty array for no teams
         }
 
-        // Extract the team data from the result
-        const team = userWithTeam.teams[0]?.team;
-
-        if (!team) {
-            return NextResponse.json(null, { status: 200 });
-        }
-
-        // Format the response to include team details and a list of members
-        const teamData = {
-            id: team.id,
-            name: team.name,
-            members: team.members.map(member => ({
+        // Format the response to include details for all teams the user is a member of
+        const teamsData = userWithTeams.teams.map(teamMembership => ({
+            id: teamMembership.team.id,
+            name: teamMembership.team.name,
+            role: teamMembership.role, // Include the user's role in this specific team
+            members: teamMembership.team.members.map(member => ({
                 id: member.user.id,
                 name: member.user.name,
                 email: member.user.email,
                 image: member.user.image,
-                role: member.role, // Include the member's role
+                role: member.role, // Include the member's role in this specific team
             })),
-        };
+        }));
 
-        return NextResponse.json(teamData);
+        return NextResponse.json(teamsData);
 
     } catch (error) {
-        console.error("[API_GET_USER_TEAM] Error:", error);
+        console.error("[API_GET_USER_TEAMS] Error:", error);
         return new NextResponse("Internal server error", { status: 500 });
     }
 } 

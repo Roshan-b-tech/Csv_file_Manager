@@ -23,29 +23,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Email is required" }, { status: 400 });
         }
 
-        console.log(`Received invitation request for: ${email}`);
+        console.log(`[INVITE] Received invitation request for: ${email}`);
 
-        const existingUser = await db.user.findUnique({
-            where: { email }
-        });
-
-        if (existingUser) {
-            return NextResponse.json({ message: "User with this email already exists" }, { status: 400 });
-        }
-
-        const invitingUser = await db.user.findUnique({
-            where: { email: session.user.email },
-        });
-
-        if (!invitingUser) {
-            return NextResponse.json({ message: "Inviting user not found" }, { status: 404 });
-        }
-
+        // Find the inviting user's team where they are the owner
         let team = await db.team.findFirst({
             where: {
                 members: {
                     some: {
-                        userId: invitingUser.id,
+                        userId: session.user.id,
                         role: "owner"
                     }
                 }
@@ -53,23 +38,59 @@ export async function POST(req: Request) {
         });
 
         if (!team) {
+            // This case should ideally not happen if the frontend button is only shown to owners,
+            // but as a fallback, create a default team if user has none.
+            console.warn(`[INVITE] User ${session.user.email} is not an owner of any team, creating a new one.`);
             team = await db.team.create({
                 data: {
-                    name: `${invitingUser.name || 'My'}'s Team`,
+                    name: `${session.user.name || 'My'}'s Team`,
                     members: {
                         create: {
-                            userId: invitingUser.id,
+                            userId: session.user.id,
                             role: "owner"
                         }
                     }
-                }
+                },
             });
         }
+
+        // Check if user already exists
+        const existingUser = await db.user.findUnique({
+            where: { email }
+        });
+
+        if (existingUser) {
+            // User exists, check if they are already a member of this team
+            const existingMembership = await db.teamMember.findFirst({
+                where: {
+                    userId: existingUser.id,
+                    teamId: team.id,
+                },
+            });
+
+            if (existingMembership) {
+                return NextResponse.json({ message: "User is already a member of this team." }, { status: 400 });
+            }
+
+            // User exists but is not a member, add them directly to the team
+            await db.teamMember.create({
+                data: {
+                    userId: existingUser.id,
+                    teamId: team.id,
+                    role: "member", // Default role for invited members
+                },
+            });
+
+            console.log(`[INVITE] Added existing user ${email} to team ${team.id}`);
+            return NextResponse.json({ message: "User added to the team successfully." }, { status: 200 });
+        }
+
+        // User does not exist, proceed with the invitation process
 
         const token = generateVerificationToken();
 
         try {
-            // Check for existing invitation for this email and team
+            // Check for existing active invitation for this email and team
             const existingInvitation = await db.invitation.findFirst({
                 where: {
                     email,
@@ -91,7 +112,7 @@ export async function POST(req: Request) {
                 });
                 console.log(`[INVITE] Updated existing invitation for ${email} in team ${team.id}`);
             } else {
-                // Count active invitations for this email
+                // Count active invitations for this email (across all teams)
                 const activeInvitationsCount = await db.invitation.count({
                     where: {
                         email,
@@ -118,12 +139,14 @@ export async function POST(req: Request) {
                 });
                 console.log(`[INVITE] Created new invitation for ${email} in team ${team.id}`);
             }
+
         } catch (error) {
             if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002' && error.meta?.target === 'Invitation_token_key') {
-                console.error("Concurrent token generation detected, retrying might be needed.", error);
+                console.error("[INVITE] Concurrent token generation detected, retrying might be needed.", error);
                 return NextResponse.json({ message: "Failed to generate unique invitation token, please try again." }, { status: 500 });
             }
-            throw error;
+            console.error("[INVITE] Error managing invitation in DB:", error);
+            return NextResponse.json({ message: "Internal server error during invitation management" }, { status: 500 });
         }
 
         const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
@@ -137,31 +160,12 @@ export async function POST(req: Request) {
         } catch (emailError) {
             console.error(`[INVITE] Failed to send invitation email to ${email}:`, emailError);
 
-            // Delete the invitation since email failed
-            try {
-                await db.invitation.delete({
-                    where: { token }
-                });
-                console.log('[INVITE] Successfully deleted invitation after email failure');
-            } catch (deleteError) {
-                console.error('[INVITE] Failed to delete invitation after email error:', deleteError);
-            }
-
             // Return a specific error for email issues
             const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-            console.error('[INVITE] Email error details:', {
-                message: errorMessage,
-                stack: emailError instanceof Error ? emailError.stack : undefined
-            });
 
             return NextResponse.json({
                 message: "Failed to send invitation email",
                 details: errorMessage,
-                error: emailError instanceof Error ? {
-                    name: emailError.name,
-                    message: emailError.message,
-                    stack: emailError.stack
-                } : String(emailError)
             }, { status: 500 });
         }
 
