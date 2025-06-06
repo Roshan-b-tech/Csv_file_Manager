@@ -56,75 +56,82 @@ export async function GET(
             filters
         });
 
-        // Get the CSV file - allow fetching if owned by user OR shared with user's team
-        const csvFile = await db.csvFile.findUnique({
-            where: {
+        // Base where clause for rows: owned by user or shared with user's team
+        const baseWhere: Prisma.CsvRowWhereInput = {
+            csvFile: {
                 id: fileId,
                 OR: [
                     { userId: user.id }, // File owned by the user
                     ...(userTeamId ? [{ teamId: userTeamId }] : []), // File associated with the user's team
                 ],
             },
-            include: {
-                rows: {
-                    skip: (page - 1) * limit,
-                    take: limit,
-                    orderBy: {
-                        rowIndex: 'asc'
-                    }
+        };
+
+        // Build dynamic filter conditions for JSONB data
+        const filterConditions: Prisma.CsvRowWhereInput[] = Object.entries(filters)
+            .filter(([key, value]) => value !== '') // Only include filters with non-empty values
+            .map(([key, value]) => ({
+                data: {
+                    path: [key],
+                    string_contains: String(value), // Case-insensitive search not directly supported for string_contains
+                    // A workaround would be to convert both the stored value and filter value to lower case
+                    // in the query, but this is complex with Prisma's JSON filtering.
+                    // Sticking to basic contains for now.
                 },
-                _count: {
-                    select: {
-                        rows: true,
-                    },
-                },
-            },
-        }) as (CsvFile & { rows: { data: any }[]; _count: Prisma.CsvFileCountOutputType }) | null; // Cast the result to include rows and _count
+            }));
 
-        if (!csvFile) {
-            console.error("[CSV_ROWS_GET] File not found:", fileId, "for user:", user.id);
-            return new NextResponse("Not found", { status: 404 });
-        }
+        // Combine base where clause with filter conditions
+        const finalWhere: Prisma.CsvRowWhereInput = {
+            AND: [baseWhere, ...filterConditions]
+        };
 
-        // Apply filters and sorting in memory since we can't do it at the database level with JSON
-        let filteredRows = csvFile.rows;
+        // Get total count of rows *after* filtering
+        const totalFilteredRows = await db.csvRow.count({
+            where: finalWhere,
+        });
 
-        // Apply filters
-        if (Object.keys(filters).length > 0) {
-            filteredRows = filteredRows.filter(row => {
-                return Object.entries(filters).every(([key, value]) => {
-                    const rowData = row.data as CsvRowData;
-                    const rowValue = rowData[key];
-                    return rowValue !== null && String(rowValue).toLowerCase().includes(String(value).toLowerCase());
-                });
-            });
-        }
+        // Get all filtered rows (without pagination or direct DB sorting)
+        const allFilteredRows = await db.csvRow.findMany({
+            where: finalWhere,
+            orderBy: { rowIndex: 'asc' }, // Keep a default order for consistent fetching before in-memory sort
+        });
 
-        // Apply sorting
+        // Perform in-memory sorting
+        let sortedRows = allFilteredRows;
         if (sortColumn) {
-            filteredRows.sort((a, b) => {
-                const aData = a.data as CsvRowData;
-                const bData = b.data as CsvRowData;
-                const aValue = aData[sortColumn];
-                const bValue = bData[sortColumn];
+            sortedRows = sortedRows.sort((a, b) => {
+                const aValue = a.data && (a.data as any)[sortColumn];
+                const bValue = b.data && (b.data as any)[sortColumn];
 
-                if (aValue === bValue) return 0;
+                // Handle nulls and undefined values during sorting
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
+                if (aValue === bValue) return 0;
 
-                const comparison = String(aValue).localeCompare(String(bValue));
-                return sortDirection === "desc" ? -comparison : comparison;
+                // Basic comparison (handles strings and numbers)
+                if (sortDirection === "desc") {
+                    return aValue < bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? -1 : 1;
+                }
             });
         }
 
-        console.log("[CSV_ROWS_GET] Found rows:", {
-            total: csvFile._count.rows,
-            returned: filteredRows.length
+        // Manually apply pagination
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedRows = sortedRows.slice(startIndex, endIndex);
+
+        console.log("[CSV_ROWS_GET] Found filtered and paginated rows:", {
+            total: totalFilteredRows,
+            returned: paginatedRows.length,
+            page: page,
+            limit: limit,
         });
 
         return NextResponse.json({
-            rows: filteredRows,
-            total: csvFile._count.rows,
+            rows: paginatedRows,
+            total: totalFilteredRows,
         });
     } catch (error) {
         console.error("[CSV_ROWS_GET] Error:", error);
@@ -161,32 +168,60 @@ export async function PATCH(
         const body = await req.json();
         const { rowId, column, value } = body;
 
-        // Verify the CSV file belongs to the user
+        console.log("[CSV_ROWS_PATCH] Received request to update row:", rowId, "column:", column, "value:", value, "for file:", id);
+
+        // Verify the CSV file belongs to the user and fetch the row
+        const rowToUpdate = await db.csvRow.findUnique({
+            where: {
+                id: rowId,
+                csvFileId: id,
+            },
+            select: {
+                id: true,
+                data: true,
+                csvFileId: true,
+            }
+        });
+
+        if (!rowToUpdate) {
+            return new NextResponse("Row not found in this file", { status: 404 });
+        }
+
+        // Verify the CSV file belongs to the user using the file ID from the row
         const csvFile = await db.csvFile.findUnique({
             where: {
-                id: id,
+                id: rowToUpdate.csvFileId,
                 userId: user.id,
             },
         });
 
         if (!csvFile) {
-            return new NextResponse("Not found", { status: 404 });
+            // This case should ideally not happen if the above check passes and fileId is correct,
+            // but it's a safeguard.
+            return new NextResponse("CSV file not found or you are not the owner", { status: 404 });
         }
 
-        // Update the row
+        // Create a new data object with the updated column value
+        const updatedData = {
+            ...(rowToUpdate.data as Prisma.JsonObject),
+            [column]: value,
+        };
+
+        // Update the row with the new data object
         const updatedRow = await db.csvRow.update({
             where: {
                 id: rowId,
-                csvFileId: id,
             },
             data: {
-                [column]: value,
+                data: updatedData as Prisma.InputJsonValue,
             },
         });
 
+        console.log("[CSV_ROWS_PATCH] Successfully updated row:", updatedRow.id);
+
         return NextResponse.json(updatedRow);
     } catch (error) {
-        console.error("[CSV_ROWS_PATCH]", error);
+        console.error("[CSV_ROWS_PATCH] Error:", error);
         return new NextResponse("Internal error", { status: 500 });
     }
 } 

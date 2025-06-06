@@ -53,7 +53,7 @@ export function CsvDataTable({ fileId, columnHeaders }: CsvDataTableProps) {
   const [editValue, setEditValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const rowsPerPage = 10;
+  const rowsPerPage = 5;
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});
   const firstFilterInputRef = useRef<HTMLInputElement>(null);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -139,10 +139,17 @@ export function CsvDataTable({ fileId, columnHeaders }: CsvDataTableProps) {
     if (!editingCell) return;
     setSavingCell(editingCell);
     try {
-      await fetch(`/api/csv/${fileId}/rows/${editingCell.row}`, {
+      const rowToSave = data[editingCell.row];
+      if (!rowToSave || !rowToSave.id) {
+        console.error("Could not find row data or row ID to save.", editingCell);
+        // TODO: Show an error notification to the user
+        return;
+      }
+      await fetch(`/api/csv/${fileId}/rows`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          rowId: rowToSave.id,
           column: editingCell.col,
           value: editValue
         })
@@ -276,7 +283,7 @@ export function CsvDataTable({ fileId, columnHeaders }: CsvDataTableProps) {
           <TableHeader>
             <TableRow>
               {visibleColumns.map((column) => (
-                <TableHead key={column} className="min-w-[150px]">
+                <TableHead key={column} className="min-w-[150px] px-4 py-2">
                   <div
                     className="flex items-center cursor-pointer"
                     onClick={() => handleSort(column)}

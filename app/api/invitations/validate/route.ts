@@ -10,27 +10,28 @@ export async function GET(request: Request) {
     }
 
     try {
-        const invitation = await db.invitation.findUnique({
+        const invitation = await db.invitation.findFirst({
             where: {
                 token,
+                expires: {
+                    gt: new Date()
+                }
             },
+            include: {
+                team: true
+            }
         });
 
         if (!invitation) {
-            return NextResponse.json({ message: 'Invalid invitation token' }, { status: 404 });
+            return NextResponse.json({ message: 'Invalid or expired invitation token' }, { status: 404 });
         }
 
-        // Check if the token has expired
-        if (invitation.expires < new Date()) {
-            // Optionally delete the expired invitation
-            await db.invitation.delete({
-                where: { token },
-            });
-            return NextResponse.json({ message: 'Invitation token has expired' }, { status: 400 });
-        }
-
-        // Token is valid and not expired, return the associated email
-        return NextResponse.json({ email: invitation.email });
+        // Token is valid and not expired, return the associated email and team info
+        return NextResponse.json({
+            email: invitation.email,
+            teamId: invitation.teamId,
+            teamName: invitation.team.name
+        });
 
     } catch (error) {
         console.error('Error validating invitation token:', error);

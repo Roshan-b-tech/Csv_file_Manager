@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { FileSpreadsheet, Clock, Columns, LayoutGrid } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Database } from "lucide-react";
 
 type CsvFileInfoProps = {
   file: {
@@ -50,12 +53,12 @@ export function CsvFileInfo({ file }: CsvFileInfoProps) {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground mb-1">File Type</span>
               <span className="text-sm font-medium">CSV</span>
             </div>
-            
+
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground mb-1">Columns</span>
               <div className="flex items-center">
@@ -65,7 +68,7 @@ export function CsvFileInfo({ file }: CsvFileInfoProps) {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground mb-1">Rows</span>
               <div className="flex items-center">
@@ -92,6 +95,17 @@ export function CsvFileInfo({ file }: CsvFileInfoProps) {
               ))}
             </div>
           </div>
+
+          <Separator />
+
+          {/* Button to navigate to the data view */}
+          <Button className="w-full gap-2 bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform" asChild>
+            <Link href={`/csv-manager/${file.id}/data`}>
+              <Database className="h-4 w-4" />
+              View Full Data Table
+            </Link>
+          </Button>
+
         </div>
       </CardContent>
     </Card>

@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from "next-auth/react";
 
 interface TeamMember {
     id: string;
@@ -29,6 +30,7 @@ export default function TeamPage() {
     const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
     const [memberToRemoveId, setMemberToRemoveId] = useState<string | null>(null);
     const { toast } = useToast();
+    const { data: session } = useSession(); // Get session data
 
     // Implement remove member logic (now just triggers confirmation)
     const handleRemoveMember = (memberId: string) => {
@@ -156,16 +158,18 @@ export default function TeamPage() {
                                 {/* Assuming the logged-in user's ID is available in session or context */}
                                 {/* For now, a simplified check: button is visible if member role is not owner */}
                                 {/* A proper check would involve comparing member.id to the logged-in user's ID */}
-                                {member.role !== 'owner' && (
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleRemoveMember(member.id)} // This now opens the confirmation dialog
-                                        className="ml-auto"
-                                    >
-                                        Remove
-                                    </Button>
-                                )}
+                                {session?.user?.id && // Ensure session and user ID exist
+                                    team?.members.find(m => m.id === session.user?.id)?.role === 'owner' && // Check if current user is owner
+                                    member.id !== session.user?.id && ( // Check if the member is not the current user
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => handleRemoveMember(member.id)} // This now opens the confirmation dialog
+                                            className="ml-auto"
+                                        >
+                                            Remove
+                                        </Button>
+                                    )}
                             </div>
                         ))}
                     </div>

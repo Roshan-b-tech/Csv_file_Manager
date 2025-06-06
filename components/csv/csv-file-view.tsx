@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, Download, MoreHorizontal, Filter, Columns, SortAsc, BarChart3 } from "lucide-react";
+import { ChevronLeft, Download, MoreHorizontal, Filter, Columns, SortAsc, BarChart3, PenBox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CsvDataTable } from "@/components/csv/csv-data-table";
 import { CsvFileInfo } from "@/components/csv/csv-file-info";
 import {
     DropdownMenu,
@@ -130,14 +129,14 @@ export function CsvFileView({ fileId }: { fileId: string }) {
 
             if (response.ok) {
                 // Update the file state to reflect that it's now shared
-                setFile(prev => prev ? { ...prev, teamId: data.file?.teamId || 'shared' } : null); // Use shared teamId or a marker
+                setFile(prev => prev ? { ...prev, teamId: data.file?.teamId || 'shared' } : null);
                 alert(data.message || "File shared with team.");
             } else {
                 alert(data.message || "Failed to share file with team.");
             }
         } catch (error) {
             console.error('Error sharing file:', error);
-            alert("An error occurred while sharing the file.");
+            alert("An error occurred while sharing the file. Please try again.");
         } finally {
             setIsSharing(false);
         }
@@ -197,75 +196,67 @@ export function CsvFileView({ fileId }: { fileId: string }) {
                     </radialGradient>
                 </defs>
             </svg>
-            <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col h-full">
+
+            <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 relative z-10">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 gap-4">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center mb-6 gap-4 w-full">
                     <Button variant="outline" size="icon" asChild className="mr-auto sm:mr-4 bg-white/80 backdrop-blur-md border border-white/30 shadow-lg hover:scale-105 transition-transform">
                         <Link href="/csv-manager">
                             <ChevronLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 mb-2 sm:mb-0">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm truncate">
-                            {isRenaming ? (
-                                <form
-                                    onSubmit={e => {
-                                        e.preventDefault();
-                                        handleRename();
-                                    }}
-                                    className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full"
-                                >
-                                    <Input
-                                        className="border rounded px-2 py-1 text-lg w-full sm:flex-1 min-w-0"
-                                        value={renameValue}
-                                        onChange={e => setRenameValue(e.target.value)}
-                                        autoFocus
-                                    />
-                                    <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                                        <Button
-                                            type="submit"
-                                            size="sm"
-                                            disabled={
-                                                renameLoading ||
-                                                !renameValue.trim() ||
-                                                renameValue.trim() === file.fileName
+                            {isRenaming ?
+                                <Input
+                                    value={renameValue}
+                                    onChange={(e) => setRenameValue(e.target.value)}
+                                    onBlur={handleRename}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleRename();
+                                            // Prevent form submission if this input is part of a form
+                                            if (e.currentTarget.form) {
+                                                e.preventDefault();
                                             }
-                                            className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform flex-1 sm:flex-none"
-                                        >
-                                            {renameLoading ? "Saving..." : "Save"}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => setIsRenaming(false)}
-                                            disabled={renameLoading}
-                                            className="flex-1 sm:flex-none"
-                                        >
-                                            Cancel
-                                        </Button>
-                                    </div>
-                                </form>
-                            ) : (
-                                file.originalName
-                            )}
+                                        }
+                                        if (e.key === 'Escape') {
+                                            setIsRenaming(false);
+                                            setRenameValue(file?.fileName || ''); // Reset value on escape
+                                        }
+                                    }}
+                                    autoFocus
+                                    className="inline w-auto text-gray-900"
+                                />
+                                : file?.fileName}
                         </h1>
                         <p className="mt-1 text-white/90 drop-shadow-sm text-sm sm:text-base">
                             Uploaded on {new Date(file.uploadedAt).toLocaleDateString()}
                         </p>
                     </div>
-                    <div className="flex gap-2 ml-auto sm:ml-0">
+                    <div className="flex flex-wrap gap-2 items-center justify-start w-full sm:w-auto sm:justify-end sm:ml-auto">
+                        {/* Rename Button */}
+                        {!isRenaming && file && (
+                            <Button className="gap-2 bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform" size="sm" onClick={() => setIsRenaming(true)}>
+                                <PenBox className="h-4 w-4" />
+                                <span className="hidden sm:inline">Rename</span>
+                            </Button>
+                        )}
+                        {/* Export Button */}
                         <Button className="gap-2 bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform"
                             onClick={handleExport}
                             size="sm"
                         >
                             <Download className="h-4 w-4" /> <span className="hidden sm:inline">Export</span>
                         </Button>
+                        {/* Analyze Button */}
                         <Button className="gap-2 bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform" size="sm" asChild>
                             <Link href={`/csv-manager/${fileId}/analyze`}>
                                 <BarChart3 className="h-4 w-4" /> <span className="hidden sm:inline">Analyze</span>
                             </Link>
                         </Button>
+
+                        {/* More Options Dropdown */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 transition-transform" size="icon">
@@ -273,7 +264,6 @@ export function CsvFileView({ fileId }: { fileId: string }) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setIsRenaming(true); setRenameValue(file.fileName); }}>Rename</DropdownMenuItem>
                                 <DropdownMenuItem onClick={handleDuplicate}>Duplicate</DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={handleShareWithTeam}
@@ -287,7 +277,6 @@ export function CsvFileView({ fileId }: { fileId: string }) {
                     </div>
                 </div>
 
-                {/* Main Content Grid */}
                 <div className="grid grid-cols-1 gap-6 flex-1 min-h-0">
                     {/* File Info Card */}
                     <div className="md:col-span-1">
@@ -296,21 +285,9 @@ export function CsvFileView({ fileId }: { fileId: string }) {
                         </Card>
                     </div>
 
-                    {/* CSV Data Table Card (Scrollable horizontally) */}
-                    <div className="md:col-span-3 overflow-x-auto flex flex-col min-h-0">
-                        <Card className="bg-white/80 backdrop-blur-md border border-white/30 shadow-lg rounded-2xl p-6 min-w-full flex-1 flex flex-col min-h-0">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold mb-2 md:mb-0">File Data</h2>
-                                {/* Controls */}
-                                // ... existing code ...
-                            </div>
-                            <Separator className="mb-4 bg-white/30" />
-                            {/* Ensure table content takes remaining height and is scrollable vertically if needed */}
-                            <div className="flex-1 overflow-y-auto">
-                                <CsvDataTable fileId={file.id} columnHeaders={file.columnHeaders} />
-                            </div>
-                        </Card>
-                    </div>
+                    {/* The space where the data table used to be */}
+                    {/* This section is now removed */}
+
                 </div>
             </div>
         </div>

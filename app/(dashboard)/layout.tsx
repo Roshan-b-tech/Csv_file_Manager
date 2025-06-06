@@ -4,6 +4,7 @@ import SidebarNav from "@/components/sidebar-nav";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import SessionProviderWrapper from "@/components/session-provider-wrapper";
 
 export default async function DashboardLayout({
   children,
@@ -30,7 +31,9 @@ export default async function DashboardLayout({
       {/* Main content */}
       <main className="flex-1 pt-16 md:pt-0 overflow-y-auto">
         <div className="container mx-auto p-4 md:p-6">
-          {children}
+          <SessionProviderWrapper>
+            {children}
+          </SessionProviderWrapper>
         </div>
       </main>
     </div>

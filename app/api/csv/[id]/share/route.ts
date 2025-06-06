@@ -33,7 +33,7 @@ export async function POST(
         });
 
         if (!userWithTeam || userWithTeam.teams.length === 0) {
-            return new NextResponse("User is not the owner of a team", { status: 403 });
+            return NextResponse.json({ message: "User is not the owner of a team" }, { status: 403 });
         }
 
         const userTeamId = userWithTeam.teams[0]?.teamId;

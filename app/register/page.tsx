@@ -68,6 +68,11 @@ function RegisterForm() {
                     if (!formData.email || formData.email !== data.email) {
                         setFormData(prev => ({ ...prev, email: data.email }));
                     }
+                    toast({
+                        title: "Team Invitation",
+                        description: `You're joining ${data.teamName}`,
+                        variant: "default",
+                    });
                 } else {
                     setError(data.message || 'Invalid or expired invitation token.');
                     toast({
