@@ -247,7 +247,7 @@ export default function TeamPage() {
         <>
             <Card className="w-full max-w-2xl mx-auto">
                 <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
+                    <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         {/* Team Selection Dropdown */}
                         <div className="flex items-center space-x-2">
                             <span>Team:</span>
@@ -311,15 +311,17 @@ export default function TeamPage() {
                             <h3 className="text-lg font-semibold mb-4">Members ({selectedTeam.members.length})</h3>
                             <div className="space-y-4">
                                 {selectedTeam.members.map(member => (
-                                    <div key={member.id} className="flex items-center space-x-4">
-                                        <Avatar>
-                                            <AvatarImage src={member.image || undefined} />
-                                            <AvatarFallback>{member.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{member.name || "No Name"}</p>
-                                            <p className="text-sm text-muted-foreground">{member.email || "No Email"}</p>
-                                            <p className="text-xs text-blue-600 dark:text-blue-400">{member.role}</p>
+                                    <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 sm:space-x-4 p-2 border rounded-md">
+                                        <div className="flex items-center space-x-4">
+                                            <Avatar>
+                                                <AvatarImage src={member.image || undefined} />
+                                                <AvatarFallback>{member.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">{member.name || "No Name"}</p>
+                                                <p className="text-sm text-muted-foreground truncate">{member.email || "No Email"}</p>
+                                                <p className="text-xs text-blue-600 dark:text-blue-400">{member.role}</p>
+                                            </div>
                                         </div>
                                         {/* Only allow removing others if the current user is an owner of the selected team */}
                                         {isOwner && member.id !== session?.user?.id && (
@@ -327,7 +329,7 @@ export default function TeamPage() {
                                                 variant="destructive"
                                                 size="sm"
                                                 onClick={() => handleRemoveMember(member.id)}
-                                                className="ml-auto"
+                                                className="shrink-0"
                                             >
                                                 Remove
                                             </Button>
