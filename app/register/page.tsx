@@ -43,14 +43,26 @@ function RegisterForm() {
                 }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
                 router.push("/login?registered=true");
             } else {
-                const data = await response.json();
                 setError(data.message || "Registration failed");
+                toast({
+                    title: "Registration Error",
+                    description: data.message || "Registration failed",
+                    variant: "destructive",
+                });
             }
         } catch (error) {
-            setError("An error occurred during registration");
+            const errorMessage = error instanceof Error ? error.message : "An error occurred during registration";
+            setError(errorMessage);
+            toast({
+                title: "Registration Error",
+                description: errorMessage,
+                variant: "destructive",
+            });
         } finally {
             setIsLoading(false);
         }

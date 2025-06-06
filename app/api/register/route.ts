@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
         const { email, name, password, bio, location, website, invitationToken } = body;
 
         if (!email || !name || !password) {
-            return new NextResponse("Missing required fields", { status: 400 });
+            return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
         }
 
         let teamId: string | null = null;
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
             });
 
             if (!invitation) {
-                return new NextResponse("Invalid invitation token", { status: 400 });
+                return NextResponse.json({ message: "Invalid invitation token" }, { status: 400 });
             }
 
             if (invitation.expires < new Date()) {
@@ -35,12 +35,9 @@ export async function POST(req: NextRequest) {
                 await db.invitation.delete({
                     where: { token: invitationToken },
                 });
-                return new NextResponse("Invitation token has expired", { status: 400 });
+                return NextResponse.json({ message: "Invitation token has expired" }, { status: 400 });
             }
 
-            // IMPORTANT: We allow email mismatch here if the user is trying to register
-            // The check below for existing user will handle the case where email is provided.
-            // The frontend should ideally pre-fill the email from the token.
             teamId = invitation.teamId;
             invitationId = invitation.id;
         }
@@ -52,7 +49,6 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // --- Modified Logic Here ---
         // If user exists AND a valid invitation token was used, add them to the team instead of blocking
         if (existingUser && teamId && invitationId) {
             try {
@@ -70,12 +66,10 @@ export async function POST(req: NextRequest) {
                         where: { id: invitationId }
                     });
                 });
-                // Redirect to login with a success message or dashboard
                 return NextResponse.json({ message: "You are already registered and have been added to the team. Please log in." }, { status: 200 });
             } catch (transactionError) {
                 if (transactionError instanceof PrismaClientKnownRequestError && transactionError.code === 'P2002') {
                     // Handle case where user is already a member of the team
-                    // Optionally delete the invitation if they are already a member
                     try {
                         if (invitationId) {
                             await db.invitation.delete({ where: { id: invitationId } });
@@ -83,22 +77,17 @@ export async function POST(req: NextRequest) {
                     } catch (deleteErr) {
                         console.error("Failed to delete invitation after finding existing team member:", deleteErr);
                     }
-                    return new NextResponse("You are already a member of this team. Please log in.", { status: 409 });
+                    return NextResponse.json({ message: "You are already a member of this team. Please log in." }, { status: 409 });
                 }
                 console.error("[REGISTER] Transaction error during team member creation for existing user:", transactionError);
-                return new NextResponse("Internal error during team association", { status: 500 });
+                return NextResponse.json({ message: "Internal error during team association" }, { status: 500 });
             }
-
         }
 
         // If user exists but NO valid invitation token was used, then it's a genuine duplicate registration attempt
         if (existingUser) {
-            return new NextResponse("Email already exists", { status: 400 });
+            return NextResponse.json({ message: "Email already exists" }, { status: 400 });
         }
-
-        // --- End Modified Logic ---
-
-        // If user does not exist, proceed with standard registration
 
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -148,8 +137,8 @@ export async function POST(req: NextRequest) {
         console.error("[REGISTER]", error);
         // Check if the error is a Prisma unique constraint error (P2002) on the email field
         if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002' && error.meta?.target === 'User_email_key') {
-            return new NextResponse("Email already exists", { status: 400 });
+            return NextResponse.json({ message: "Email already exists" }, { status: 400 });
         }
-        return new NextResponse("Internal error", { status: 500 });
+        return NextResponse.json({ message: "Internal server error", error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 } 
