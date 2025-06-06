@@ -98,7 +98,9 @@ export const authOptions: NextAuthOptions = {
 
             if (!dbUser) {
                 if (user) {
-                    token.id = user?.id;
+                    token.id = user?.id as string;
+                    token.name = user?.name;
+                    token.email = user?.email;
                 }
                 return token;
             }
